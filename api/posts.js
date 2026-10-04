@@ -93,7 +93,8 @@ module.exports = L.wrap(async (req, res) => {
   } else {
     rows = launchRows(mint ? (by[mint] ? [by[mint]] : []) : all).filter(r => r.created < before).sort((a, b) => b.created - a.created).slice(0, limit);
   }
-  const posts = rows.filter(r => by[r.mint]).map(r => view(r, by[r.mint], keys));
+  const nohouse = p.get('nohouse') === '1';
+  const posts = rows.filter(r => by[r.mint] && !(nohouse && by[r.mint].house)).map(r => view(r, by[r.mint], keys));
   const last = rows.length ? +new Date(rows[rows.length - 1].created) : null;
   const priv = Object.keys(keys).length > 0;
   L.send(res, 200, { ok: true, posts, next: rows.length === limit ? last : null, db: !!q }, priv ? 'private, no-store' : 'public, s-maxage=6, stale-while-revalidate=20');

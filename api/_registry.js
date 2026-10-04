@@ -38,7 +38,15 @@ async function coinMeta(mint) {
   return L.cached('meta:' + mint, 10 * 60e3, async () => {
     try {
       const c = await L.getJson('https://frontend-api-v3.pump.fun/coins/' + mint, { headers: { accept: 'application/json' } }, 6000);
-      if (c && c.mint === mint) return { name: c.name, symbol: c.symbol, image: c.image_uri || null, description: c.description || '' };
+      if (c && c.mint === mint) {
+        let curve = null;
+        if (c.complete != null) {
+          const rt = c.real_token_reserves != null ? BigInt(Math.floor(Number(c.real_token_reserves))) : null;
+          const sold = rt != null && K.INITIAL_REAL_TOKENS > rt ? K.INITIAL_REAL_TOKENS - rt : null;
+          curve = { complete: !!c.complete, progress: c.complete ? 1 : sold != null ? Math.max(0, Math.min(1, Number(sold * 10000n / K.INITIAL_REAL_TOKENS) / 10000)) : null };
+        }
+        return { name: c.name, symbol: c.symbol, image: c.image_uri || null, description: c.description || '', curve };
+      }
     } catch (e) { }
     try {
       const X = require('@solana/web3.js');
@@ -147,7 +155,8 @@ function house() {
 }
 async function decorate(list, st) {
   const mints = list.filter(c => !c.house).map(c => c.mint);
-  const [mk, cv, hd] = await Promise.all([markets(mints), K.curves(mints), holders(mints)]);
+  const [mk, cv, hd, metas] = await Promise.all([markets(mints), K.curves(mints), holders(mints), Promise.all(mints.map(m => coinMeta(m).catch(() => null)))]);
+  mints.forEach((m, i) => { if (!cv[m] && metas[i] && metas[i].curve && metas[i].curve.progress != null) cv[m] = metas[i].curve; });
   return list.map(c => {
     const x = st[c.mint];
     const pic = c.house ? c.avatar : '/api/media?mint=' + c.mint;
