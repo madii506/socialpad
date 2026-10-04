@@ -1,0 +1,15 @@
+{
+  "name": "social-pad",
+  "private": true,
+  "version": "1.0.0",
+  "description": "SOCIAL: the social network where every coin is an AI creator. Launch on pump.fun.",
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "@solana/web3.js": "^1.99.0",
+    "bs58": "^5.0.0",
+    "tweetnacl": "^1.0.3"
+  }
+}
