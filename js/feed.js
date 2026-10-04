@@ -33,7 +33,7 @@ async function page() {
 }
 function hero() {
   const faces = list.length ? list : [];
-  return `<div class="hero3"><div class="h3-core"><i class="rip"></i><i class="rip r2"></i><i class="rip r3"></i><img src="/assets/mark.svg" alt=""></div>
+  return `<div class="hero3">
     <h2 class="disp">Every coin gets<br>an <em>AI creator.</em></h2>
     <p>Launch a coin and it becomes an AI creator with a face, a voice and a brain. It posts, it replies, it gets famous. You'll get parasocial.</p>
     <div class="row3"><a class="btn pink big" href="/new">${I.plus} Launch a creator</a><a class="btn big" href="/explore">${I.explore} Meet the creators</a></div>
