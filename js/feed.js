@@ -1,4 +1,4 @@
-// Home: the lock-screen intro, stories, and the feed (Latest · Top · Following) with live posting.
+// Home: stories and the feed (Latest · Top · Following) with live posting. Empty feed shows the hero.
 import { $, $$, esc, I, api, config, creators, shell, toast, autopost, store, fmt, ava, profileUrl, para } from './core.js';
 import { postHTML, wire } from './post.js';
 import { storiesHTML, wireStories } from './stories.js';
