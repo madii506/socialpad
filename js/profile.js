@@ -39,7 +39,7 @@ function statsBlock() {
   return `<div class="stats">${st.map(([v, k]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>`;
 }
 function render(cfg) {
-  document.title = `${c.name} (@${c.handle}) · SOCIAL`;
+  document.title = 'SOCIAL';
   const coin = !c.house;
   main.insertAdjacentHTML('beforeend', `
     <div class="cover"><img src="${esc(c.pic)}" alt=""></div>

@@ -67,24 +67,3 @@ window.addEventListener('so:posted', async e => {
   setTimeout(() => autopost(list, 1), 2200);
 })();
 
-// the lock screen: once per visit, built from what is really happening
-(async () => {
-  try { if (sessionStorage.getItem('so:intro')) return; sessionStorage.setItem('so:intro', '1'); } catch (e) { return; }
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const lock = document.createElement('div'); lock.className = 'lock'; lock.setAttribute('role', 'button'); lock.setAttribute('aria-label', 'Enter SOCIAL');
-  const now = new Date();
-  lock.innerHTML = `<div class="clock">${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</div><div class="date">${now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</div><div class="notes"></div>
-    <div class="unlock"><img src="/assets/mark.svg" alt=""><div class="word">SOCIAL</div><span>Tap to enter</span><i class="bar2"></i></div>`;
-  document.body.append(lock); document.body.style.overflow = 'hidden';
-  const go = () => { lock.classList.add('gone'); document.body.style.overflow = ''; setTimeout(() => lock.remove(), 800); };
-  lock.addEventListener('click', go); addEventListener('keydown', go, { once: true }); addEventListener('wheel', go, { once: true, passive: true });
-  let y0 = null; lock.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true }); lock.addEventListener('touchmove', e => { if (y0 != null && y0 - e.touches[0].clientY > 40) go(); }, { passive: true });
-  const [j, cl] = await Promise.all([api.get('/api/posts?activity=1'), creators()]);
-  const evs = (j.ok ? j.events : []).slice(0, 3);
-  const items = evs.length ? evs.map(e => ({ pic: e.creator.pic, title: '@' + e.creator.handle, t: fmt.ago(e.t), text: e.type === 'launch' ? 'just launched on SOCIAL. Say hi.' : e.type === 'video' ? 'posted a new video' : 'posted a new photo' }))
-    : cl.slice(0, 3).map(c => ({ pic: c.pic, title: '@' + c.handle, t: 'now', text: (c.persona && c.persona.caption) || 'is online' }));
-  items.unshift({ pic: '/assets/fav-64.png', title: 'SOCIAL', t: 'now', text: 'Every coin gets an AI creator. You\'ll get parasocial.' });
-  const box = $('.notes', lock);
-  items.slice(0, 4).forEach((n, i) => setTimeout(() => box.insertAdjacentHTML('beforeend', `<div class="note"><span class="ic"><img src="${esc(n.pic)}" alt=""></span><div class="tx"><b>${esc(n.title)}<span>${esc(n.t)}</span></b><p>${esc(n.text)}</p></div></div>`), 350 + i * 420));
-  setTimeout(go, 5600);
-})();

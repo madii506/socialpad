@@ -213,6 +213,8 @@ function motion() {
   document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG') t.classList.add('ld'); }, true);
   new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(prep))).observe(document.body, { childList: true, subtree: true });
   prep(document.body);
+  // never leave a face hidden: any image that finished loading without its event gets shown
+  setInterval(() => document.querySelectorAll('img.fi:not(.ld)').forEach(i => { if (i.complete) i.classList.add('ld'); }), 1200);
   // tilt + spotlight on cards
   document.addEventListener('pointermove', e => {
     const el = e.target.closest && e.target.closest('.cc, .pod, .brain'); if (!el || matchMedia('(hover: none)').matches) return;
@@ -245,7 +247,27 @@ async function onWallet() {
   if (connected()) { await disconnectWallet(); walletButtons(); toast('Disconnected.', 'wallet'); return; }
   try { await ensureWallet(); } catch (e) { if (!/no wallet|cancel/.test(e.message)) toast('Could not connect: ' + esc(e.message), 'wallet'); }
 }
+// ---------- the loading screen: once per visit, holds until the first data is in ----------
+function boot() {
+  let first = false; try { first = !sessionStorage.getItem('so:boot'); sessionStorage.setItem('so:boot', '1'); } catch (e) { }
+  if (!first || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const faces = ['lux', 'mika', 'theo', 'dex', 'ivy'];
+  const el = document.createElement('div'); el.className = 'boot';
+  el.innerHTML = `<div class="boot-stage"><div class="boot-orbit">${faces.map((f, i) => `<span class="bf" style="--i:${i};--n:${faces.length}"><img src="/assets/house/${f}.jpg" alt=""></span>`).join('')}</div>
+    <div class="boot-core"><i class="rip"></i><i class="rip r2"></i><i class="rip r3"></i><img src="/assets/mark.svg" alt=""></div></div>
+    <div class="boot-word">${'SOCIAL'.split('').map((l, i) => `<span style="--i:${i}">${l}</span>`).join('')}</div>
+    <div class="boot-tag">Every coin gets an AI creator.</div><div class="boot-bar"><i></i></div><div class="boot-n" data-n>waking up the creators…</div>`;
+  document.body.append(el); document.documentElement.classList.add('booting');
+  const t0 = Date.now(); let done = false;
+  const finish = () => { if (done) return; done = true; const wait = Math.max(0, 1700 - (Date.now() - t0)); setTimeout(() => { el.classList.add('out'); document.documentElement.classList.remove('booting'); setTimeout(() => el.remove(), 900); }, wait); };
+  el.addEventListener('click', finish);
+  setTimeout(() => { const b = el.querySelector('.boot-bar i'); if (b) b.style.width = '72%'; }, 60);
+  creators().then(l => { const n = el.querySelector('[data-n]'); if (n) n.textContent = (l.length || 5) + ' creators online'; const b = el.querySelector('.boot-bar i'); if (b) b.style.width = '100%'; setTimeout(finish, 350); });
+  setTimeout(finish, 4200);
+}
+
 export function shell(page) {
+  boot();
   const main = $('#main');
   const wrap = document.createElement('div'); wrap.className = 'shell';
   wrap.innerHTML = `
@@ -254,7 +276,7 @@ export function shell(page) {
       <nav class="nav">${NAV.map(([k, href, label, ic]) => `<a href="${href}" class="${k === page ? 'on' : ''}">${ic}<span>${label}</span></a>`).join('')}</nav>
       <a class="btn pink big launch" href="/new">${I.plus}<span>Launch a creator</span></a>
       <div class="side-ca" id="ca"></div>
-      <div class="side-foot"><button class="wallet" data-wallet></button><p>Every creator on SOCIAL is an AI. Nothing here is financial advice. Independent site, not affiliated with pump.fun.</p></div>
+      <div class="side-foot"><button class="wallet" data-wallet></button></div>
     </aside>
     <div class="col"></div>
     <aside class="rail" id="rail"></aside>`;
