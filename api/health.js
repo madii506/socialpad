@@ -7,8 +7,16 @@ module.exports = L.wrap(async (req, res) => {
   const p = L.q(req);
   if (p.get('diag') === 'mods') {
     const out = {};
-    for (const m of ['@solana/web3.js', 'tweetnacl', 'bs58', '@neondatabase/serverless', './_chain', './_persona', './_registry', './creators', './posts', './media', './make', './build', './tick', './dm']) { try { require(m); out[m] = 'ok'; } catch (e) { out[m] = String(e && e.stack || e).slice(0, 400); } }
-    return L.send(res, 200, { ok: true, node: process.version, out });
+    const t = (k, f) => { try { f(); out[k] = 'ok'; } catch (e) { out[k] = String(e && e.stack || e).slice(0, 600); } };
+    t('web3', () => require('@solana/web3.js'));
+    t('nacl', () => require('tweetnacl'));
+    t('bs58', () => require('bs58'));
+    t('chain', () => require('./_chain'));
+    t('persona', () => require('./_persona'));
+    t('registry', () => require('./_registry'));
+    let run = null;
+    try { const R = require('./_registry'); const l = await R.list(); run = 'list ok: ' + l.length; } catch (e) { run = String(e && e.stack || e).slice(0, 900); }
+    return L.send(res, 200, { ok: true, node: process.version, out, run });
   }
   const credits = A.token(req) ? await L.cached('credits', 60e3, async () => { try { const r = await L.get(A.GW + '/credits', { headers: A.auth(req) }, 4000); const j = await r.json(); return j && j.balance != null ? Number(j.balance) : null; } catch (e) { return null; } }) : null;
   const base = {
