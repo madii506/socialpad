@@ -5,8 +5,14 @@ const A = require('./_ai');
 const D = require('./_db');
 module.exports = L.wrap(async (req, res) => {
   const p = L.q(req);
+  if (p.get('diag') === 'mods') {
+    const out = {};
+    for (const m of ['@solana/web3.js', 'tweetnacl', 'bs58', '@neondatabase/serverless', './_chain', './_persona', './_registry', './creators', './posts', './media', './make', './build', './tick', './dm']) { try { require(m); out[m] = 'ok'; } catch (e) { out[m] = String(e && e.stack || e).slice(0, 400); } }
+    return L.send(res, 200, { ok: true, node: process.version, out });
+  }
+  const credits = A.token(req) ? await L.cached('credits', 60e3, async () => { try { const r = await L.get(A.GW + '/credits', { headers: A.auth(req) }, 4000); const j = await r.json(); return j && j.balance != null ? Number(j.balance) : null; } catch (e) { return null; } }) : null;
   const base = {
-    ok: true, ai: !!A.token(req), db: D.on(), video: A.HF.on(),
+    ok: true, ai: !!A.token(req) && (credits == null || credits > 0), db: D.on(), video: A.HF.on(),
     socialMint: C.SOCIAL_MINT || null, x: C.X || null, reg: C.REG,
     tiers: C.TIERS.map(t => ({ id: t.id, name: t.name, at: t.at, photoHours: t.photo / 3600e3, videoHours: t.video ? t.video / 3600e3 : null, close: t.close })),
     brains: C.BRAINS.map(b => ({ id: b.id, name: b.name, maker: b.maker, tag: b.tag })), caps: C.CAPS,

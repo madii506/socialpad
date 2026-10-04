@@ -1,23 +1,25 @@
 // SOCIAL on-chain helpers: the registry transaction and pump.fun bonding-curve reads. Nothing here holds a key.
-const W = require('@solana/web3.js');
 const L = require('./_lib');
 const C = require('./_cfg');
-
-const PUMP_ID = new W.PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
-const MEMO = new W.PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+// web3.js loads lazily, so pages that only read never depend on it
+let W3 = null;
+const w3 = () => W3 || (W3 = require('@solana/web3.js'));
+const PUMP = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P';
+const MEMO = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
 const INITIAL_REAL_TOKENS = 793100000n * 1000000n; // pump.fun curve: tokens sold before graduation
-const curvePda = mint => W.PublicKey.findProgramAddressSync([Buffer.from('bonding-curve'), mint.toBuffer()], PUMP_ID)[0];
+const curvePda = mint => { const W = w3(); return W.PublicKey.findProgramAddressSync([Buffer.from('bonding-curve'), mint.toBuffer()], new W.PublicKey(PUMP))[0]; };
 
 // tx 1 of a launch: a memo "so:v1:<mint>:<personaCid>" plus a 0-lamport self-transfer that carries the
 // read-only REG key and the mint, so getSignaturesForAddress(REG) and (mint) both find it.
 async function regTx({ wallet, mint, personaCid, blockhash }) {
+  const W = w3();
   const f = new W.PublicKey(wallet), m = new W.PublicKey(mint);
   const t = W.SystemProgram.transfer({ fromPubkey: f, toPubkey: f, lamports: 0 });
   t.keys.push({ pubkey: new W.PublicKey(C.REG), isSigner: false, isWritable: false }, { pubkey: m, isSigner: false, isWritable: false });
   const ixs = [
     W.ComputeBudgetProgram.setComputeUnitLimit({ units: 40000 }),
     W.ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 200000 }),
-    new W.TransactionInstruction({ programId: MEMO, keys: [], data: Buffer.from(C.MEMO_PREFIX + mint + ':' + (personaCid || '-'), 'utf8') }),
+    new W.TransactionInstruction({ programId: new W.PublicKey(MEMO), keys: [], data: Buffer.from(C.MEMO_PREFIX + mint + ':' + (personaCid || '-'), 'utf8') }),
     t,
   ];
   const msg = new W.TransactionMessage({ payerKey: f, recentBlockhash: blockhash, instructions: ixs }).compileToV0Message();
@@ -32,7 +34,8 @@ function decodeCurve(data) {
   const complete = b[48] === 1;
   const sold = INITIAL_REAL_TOKENS > realTok ? INITIAL_REAL_TOKENS - realTok : 0n;
   const progress = complete ? 1 : Math.max(0, Math.min(1, Number(sold * 10000n / INITIAL_REAL_TOKENS) / 10000));
-  return { complete, progress, creator: new W.PublicKey(b.subarray(49, 81)).toBase58(), realSol: Number(realSol) / 1e9 };
+  let creator = null; try { creator = new (w3().PublicKey)(b.subarray(49, 81)).toBase58(); } catch (e) { }
+  return { complete, progress, creator, realSol: Number(realSol) / 1e9 };
 }
 // bonding-curve state for many mints in batched reads
 async function curves(mints) {
@@ -41,6 +44,7 @@ async function curves(mints) {
   for (let i = 0; i < ok.length; i += 100) {
     const part = ok.slice(i, i + 100);
     try {
+      const W = w3();
       const r = await L.rpc('getMultipleAccounts', [part.map(m => curvePda(new W.PublicKey(m)).toBase58()), { encoding: 'base64', commitment: 'confirmed' }]);
       (r.value || []).forEach((a, j) => { if (a) out[part[j]] = decodeCurve(a.data[0]); });
     } catch (e) { }
